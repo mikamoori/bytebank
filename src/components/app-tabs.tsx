@@ -1,32 +1,36 @@
-import { NativeTabs } from 'expo-router/unstable-native-tabs';
-import { useColorScheme } from 'react-native';
-
-import { Colors } from '@/constants/theme';
+import { Tabs } from 'expo-router';
+import React from 'react';
 
 export default function AppTabs() {
-  const scheme = useColorScheme();
-  const colors = Colors[scheme === 'unspecified' ? 'light' : scheme];
-
   return (
-    <NativeTabs
-      backgroundColor={colors.background}
-      indicatorColor={colors.backgroundElement}
-      labelStyle={{ selected: { color: colors.text } }}>
-      <NativeTabs.Trigger name="index">
-        <NativeTabs.Trigger.Label>Home</NativeTabs.Trigger.Label>
-        <NativeTabs.Trigger.Icon
-          src={require('@/assets/images/tabIcons/home.png')}
-          renderingMode="template"
-        />
-      </NativeTabs.Trigger>
-
-      <NativeTabs.Trigger name="explore">
-        <NativeTabs.Trigger.Label>Explore</NativeTabs.Trigger.Label>
-        <NativeTabs.Trigger.Icon
-          src={require('@/assets/images/tabIcons/explore.png')}
-          renderingMode="template"
-        />
-      </NativeTabs.Trigger>
-    </NativeTabs>
+    <Tabs
+      screenOptions={{
+        headerShown: false, // <-- ISTO DESATIVA A BARRA PRETA SUPERIOR
+        tabBarStyle: {
+          backgroundColor: '#FFFFFF',
+          borderTopColor: '#E2DCFF',
+          height: 60,
+          paddingBottom: 8,
+        },
+        tabBarActiveTintColor: '#7C65C1',
+        tabBarInactiveTintColor: '#A1A1AA',
+      }}
+    >
+      <Tabs.Screen
+        name="index"
+        options={{
+          title: 'Início',
+          headerShown: false, // Força a remoção na tela principal também
+        }}
+      />
+      {/* Caso existam outras abas, como explore */}
+      <Tabs.Screen
+        name="explore"
+        options={{
+          title: 'Explorar',
+          headerShown: false,
+        }}
+      />
+    </Tabs>
   );
 }

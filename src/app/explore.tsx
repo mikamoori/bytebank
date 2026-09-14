@@ -1,180 +1,370 @@
-import { Image } from 'expo-image';
-import { SymbolView } from 'expo-symbols';
-import { Platform, Pressable, ScrollView, StyleSheet } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import React, { useState } from 'react';
+import {
+  StyleSheet,
+  Text,
+  View,
+  TextInput,
+  TouchableOpacity,
+  ScrollView,
+  ActivityIndicator,
+  Alert,
+  Image,
+  Platform,
+} from 'react-native';
+import * as ImagePicker from 'expo-image-picker';
+import { useRouter } from 'expo-router';
+import { collection, addDoc, Timestamp } from 'firebase/firestore';
+import { db } from '../services/firebaseConfig';
+import { useAuth } from '../context/AuthContext';
 
-import { ExternalLink } from '@/components/external-link';
-import { ThemedText } from '@/components/themed-text';
-import { ThemedView } from '@/components/themed-view';
-import { Collapsible } from '@/components/ui/collapsible';
-import { WebBadge } from '@/components/web-badge';
-import { BottomTabInset, MaxContentWidth, Spacing } from '@/constants/theme';
-import { useTheme } from '@/hooks/use-theme';
+const CLOUDINARY_CLOUD_NAME = 'leffrguu';
+const CLOUDINARY_UPLOAD_PRESET = 'bytebank_recibos';
+const CLOUDINARY_UPLOAD_URL = `https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD_NAME}/image/upload`;
 
-export default function TabTwoScreen() {
-  const safeAreaInsets = useSafeAreaInsets();
-  const insets = {
-    ...safeAreaInsets,
-    bottom: safeAreaInsets.bottom + BottomTabInset + Spacing.three,
+export default function ExploreScreen() {
+  const { user } = useAuth();
+  const router = useRouter();
+
+  const [title, setTitle] = useState('');
+  const [amount, setAmount] = useState('');
+  const [type, setType] = useState<'income' | 'expense'>('expense');
+  const [category, setCategory] = useState('Alimentação');
+  const [imageUri, setImageUri] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
+
+  const categories = ['Alimentação', 'Lazer', 'Trabalho', 'Transporte', 'Outros'];
+
+  const pickImage = async () => {
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      allowsEditing: true,
+      quality: 0.7,
+    });
+
+    if (!result.canceled) {
+      setImageUri(result.assets[0].uri);
+    }
   };
-  const theme = useTheme();
 
-  const contentPlatformStyle = Platform.select({
-    android: {
-      paddingTop: insets.top,
-      paddingLeft: insets.left,
-      paddingRight: insets.right,
-      paddingBottom: insets.bottom,
-    },
-    web: {
-      paddingTop: Spacing.six,
-      paddingBottom: Spacing.four,
-    },
-  });
+  const uploadToCloudinary = async (uri: string) => {
+    console.log('Iniciando upload para Cloudinary...'); // DEBUG
+
+    const formData = new FormData();
+
+    if (Platform.OS === 'web') {
+      const response = await fetch(uri);
+      const blob = await response.blob();
+      formData.append('file', blob);
+    } else {
+      formData.append('file', {
+        uri,
+        type: 'image/jpeg',
+        name: 'receipt.jpg',
+      } as any);
+    }
+
+    formData.append('upload_preset', CLOUDINARY_UPLOAD_PRESET);
+
+    const res = await fetch(CLOUDINARY_UPLOAD_URL, {
+      method: 'POST',
+      body: formData,
+    });
+
+    const data = await res.json();
+    console.log('Resposta do Cloudinary:', data); // DEBUG
+
+    return data.secure_url;
+  };
+
+  const handleSaveTransaction = async () => {
+    console.log('CLIQUEI NO BOTAO'); // DEBUG 
+
+    if (!title || !amount) {
+      console.log('Validação falhou: título ou valor vazio'); // DEBUG
+      Alert.alert('Erro', 'Preencha o título e o valor da transação.');
+      return;
+    }
+
+    if (!user?.uid) {
+      console.log('Sem usuário autenticado:', user); // DEBUG
+      Alert.alert('Erro', 'Usuário não autenticado.');
+      return;
+    }
+
+    try {
+      setLoading(true);
+      console.log('Loading true, entrando no try...'); // DEBUG
+
+      let receiptUrl = '';
+
+      if (imageUri) {
+        console.log('Tem imagem, vai fazer upload...'); // DEBUG
+        receiptUrl = await uploadToCloudinary(imageUri);
+        console.log('Upload concluído, URL:', receiptUrl); // DEBUG
+      }
+
+      console.log('Vai salvar no Firestore...'); // DEBUG
+
+      await addDoc(collection(db, 'transactions'), {
+        userId: user.uid,
+        title,
+        amount: parseFloat(amount.replace(',', '.')),
+        type,
+        category,
+        receiptUrl,
+        date: Timestamp.now(),
+      });
+
+      console.log('Salvo com sucesso no Firestore!'); // DEBUG
+
+      Alert.alert('Sucesso', 'Transação registrada com sucesso!');
+
+      setTitle('');
+      setAmount('');
+      setImageUri(null);
+
+      router.push('/');
+    } catch (error) {
+      console.error('Erro ao salvar transação:', error); // Já existia
+      Alert.alert('Erro', 'Não foi possível salvar a transação.');
+    } finally {
+      setLoading(false);
+      console.log('Finally executado, loading false'); // DEBUG
+    }
+  };
 
   return (
-    <ScrollView
-      style={[styles.scrollView, { backgroundColor: theme.background }]}
-      contentInset={insets}
-      contentContainerStyle={[styles.contentContainer, contentPlatformStyle]}>
-      <ThemedView style={styles.container}>
-        <ThemedView style={styles.titleContainer}>
-          <ThemedText type="subtitle">Explore</ThemedText>
-          <ThemedText style={styles.centerText} themeColor="textSecondary">
-            This starter app includes example{'\n'}code to help you get started.
-          </ThemedText>
+    <ScrollView style={styles.container} contentContainerStyle={styles.scrollContent}>
+      <View style={styles.card}>
+        <Text style={styles.headerTitle}>Transições</Text>
+        <Text style={styles.headerSubtitle}>Registre suas entradas ou saídas</Text>
 
-          <ExternalLink href="https://docs.expo.dev" asChild>
-            <Pressable style={({ pressed }) => pressed && styles.pressed}>
-              <ThemedView type="backgroundElement" style={styles.linkButton}>
-                <ThemedText type="link">Expo documentation</ThemedText>
-                <SymbolView
-                  tintColor={theme.text}
-                  name={{ ios: 'arrow.up.right.square', android: 'link', web: 'link' }}
-                  size={12}
-                />
-              </ThemedView>
-            </Pressable>
-          </ExternalLink>
-        </ThemedView>
+        {/* Tipo: Entrada ou Saída */}
+        <View style={styles.typeContainer}>
+          <TouchableOpacity
+            style={[styles.typeButton, type === 'income' && styles.incomeSelected]}
+            onPress={() => setType('income')}
+          >
+            <Text style={[styles.typeText, type === 'income' && styles.selectedTypeText]}>
+              ↓ Entrada
+            </Text>
+          </TouchableOpacity>
 
-        <ThemedView style={styles.sectionsWrapper}>
-          <Collapsible title="File-based routing">
-            <ThemedText type="small">
-              This app has two screens: <ThemedText type="code">src/app/index.tsx</ThemedText> and{' '}
-              <ThemedText type="code">src/app/explore.tsx</ThemedText>
-            </ThemedText>
-            <ThemedText type="small">
-              The layout file in <ThemedText type="code">src/app/_layout.tsx</ThemedText> sets up
-              the tab navigator.
-            </ThemedText>
-            <ExternalLink href="https://docs.expo.dev/router/introduction">
-              <ThemedText type="linkPrimary">Learn more</ThemedText>
-            </ExternalLink>
-          </Collapsible>
+          <TouchableOpacity
+            style={[styles.typeButton, type === 'expense' && styles.expenseSelected]}
+            onPress={() => setType('expense')}
+          >
+            <Text style={[styles.typeText, type === 'expense' && styles.selectedTypeText]}>
+              ↑ Saída
+            </Text>
+          </TouchableOpacity>
+        </View>
+        <View style={styles.inputGroup}>
+          <Text style={styles.label}>Título</Text>
+          <TextInput
+            style={styles.input}
+            placeholder="Ex: Mercado, Salário..."
+            placeholderTextColor="#A1A1AA"
+            value={title}
+            onChangeText={setTitle}
+          />
+        </View>
 
-          <Collapsible title="Android, iOS, and web support">
-            <ThemedView type="backgroundElement" style={styles.collapsibleContent}>
-              <ThemedText type="small">
-                You can open this project on Android, iOS, and the web. To open the web version,
-                press <ThemedText type="smallBold">w</ThemedText> in the terminal running this
-                project.
-              </ThemedText>
-              <Image
-                source={require('@/assets/images/tutorial-web.png')}
-                style={styles.imageTutorial}
-              />
-            </ThemedView>
-          </Collapsible>
+        <View style={styles.inputGroup}>
+          <Text style={styles.label}>Valor (R$)</Text>
+          <TextInput
+            style={styles.input}
+            placeholder="0,00"
+            placeholderTextColor="#A1A1AA"
+            keyboardType="numeric"
+            value={amount}
+            onChangeText={setAmount}
+          />
+        </View>
 
-          <Collapsible title="Images">
-            <ThemedText type="small">
-              For static images, you can use the <ThemedText type="code">@2x</ThemedText> and{' '}
-              <ThemedText type="code">@3x</ThemedText> suffixes to provide files for different
-              screen densities.
-            </ThemedText>
-            <Image source={require('@/assets/images/react-logo.png')} style={styles.imageReact} />
-            <ExternalLink href="https://reactnative.dev/docs/images">
-              <ThemedText type="linkPrimary">Learn more</ThemedText>
-            </ExternalLink>
-          </Collapsible>
+        <View style={styles.inputGroup}>
+          <Text style={styles.label}>Categoria</Text>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.categoryScroll}>
+            {categories.map((cat) => (
+              <TouchableOpacity
+                key={cat}
+                style={[styles.categoryBadge, category === cat && styles.categorySelected]}
+                onPress={() => setCategory(cat)}
+              >
+                <Text
+                  style={[
+                    styles.categoryBadgeText,
+                    category === cat && styles.categorySelectedText,
+                  ]}
+                >
+                  {cat}
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </ScrollView>
+        </View>
 
-          <Collapsible title="Light and dark mode components">
-            <ThemedText type="small">
-              This template has light and dark mode support. The{' '}
-              <ThemedText type="code">useColorScheme()</ThemedText> hook lets you inspect what the
-              user&apos;s current color scheme is, and so you can adjust UI colors accordingly.
-            </ThemedText>
-            <ExternalLink href="https://docs.expo.dev/develop/user-interface/color-themes/">
-              <ThemedText type="linkPrimary">Learn more</ThemedText>
-            </ExternalLink>
-          </Collapsible>
+        <View style={styles.inputGroup}>
+          <Text style={styles.label}>Comprovante / Recibo</Text>
+          <TouchableOpacity style={styles.uploadButton} onPress={pickImage}>
+            <Text style={styles.uploadButtonText}>
+              {imageUri ? '✓ Recibo Selecionado (Alterar)' : '📷 Anexar Recibo'}
+            </Text>
+          </TouchableOpacity>
+          {imageUri && (
+            <Image source={{ uri: imageUri }} style={styles.previewImage} />
+          )}
+        </View>
 
-          <Collapsible title="Animations">
-            <ThemedText type="small">
-              This template includes an example of an animated component. The{' '}
-              <ThemedText type="code">src/components/ui/collapsible.tsx</ThemedText> component uses
-              the powerful <ThemedText type="code">react-native-reanimated</ThemedText> library to
-              animate opening this hint.
-            </ThemedText>
-          </Collapsible>
-        </ThemedView>
-        {Platform.OS === 'web' && <WebBadge />}
-      </ThemedView>
+        <TouchableOpacity
+          style={[styles.submitButton, loading && styles.buttonDisabled]}
+          onPress={handleSaveTransaction}
+          disabled={loading}
+        >
+          {loading ? (
+            <ActivityIndicator color="#FFFFFF" />
+          ) : (
+            <Text style={styles.submitButtonText}>Salvar Transação</Text>
+          )}
+        </TouchableOpacity>
+      </View>
     </ScrollView>
   );
 }
 
 const styles = StyleSheet.create({
-  scrollView: {
-    flex: 1,
-  },
-  contentContainer: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-  },
   container: {
-    maxWidth: MaxContentWidth,
-    flexGrow: 1,
+    flex: 1,
+    backgroundColor: '#F1EFFF',
   },
-  titleContainer: {
-    gap: Spacing.three,
-    alignItems: 'center',
-    paddingHorizontal: Spacing.four,
-    paddingVertical: Spacing.six,
-  },
-  centerText: {
-    textAlign: 'center',
-  },
-  pressed: {
-    opacity: 0.7,
-  },
-  linkButton: {
-    flexDirection: 'row',
-    paddingHorizontal: Spacing.four,
-    paddingVertical: Spacing.two,
-    borderRadius: Spacing.five,
-    justifyContent: 'center',
-    gap: Spacing.one,
+  scrollContent: {
+    paddingTop: 100,
+    paddingBottom: 40,
+    paddingHorizontal: 20,
     alignItems: 'center',
   },
-  sectionsWrapper: {
-    gap: Spacing.five,
-    paddingHorizontal: Spacing.four,
-    paddingTop: Spacing.three,
-  },
-  collapsibleContent: {
-    alignItems: 'center',
-  },
-  imageTutorial: {
+  card: {
     width: '100%',
-    aspectRatio: 296 / 171,
-    borderRadius: Spacing.three,
-    marginTop: Spacing.two,
+    maxWidth: 420,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 28,
+    padding: 24,
+    elevation: 4,
   },
-  imageReact: {
-    width: 100,
-    height: 100,
-    alignSelf: 'center',
+  headerTitle: {
+    fontSize: 22,
+    fontWeight: '700',
+    color: '#18181B',
+  },
+  headerSubtitle: {
+    fontSize: 13,
+    color: '#71717A',
+    marginBottom: 20,
+  },
+  typeContainer: {
+    flexDirection: 'row',
+    gap: 12,
+    marginBottom: 20,
+  },
+  typeButton: {
+    flex: 1,
+    height: 48,
+    borderRadius: 16,
+    backgroundColor: '#F4F2FF',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  incomeSelected: {
+    backgroundColor: '#16A34A',
+  },
+  expenseSelected: {
+    backgroundColor: '#18181B',
+  },
+  typeText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#71717A',
+  },
+  selectedTypeText: {
+    color: '#FFFFFF',
+  },
+  inputGroup: {
+    marginBottom: 16,
+  },
+  label: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#71717A',
+    marginBottom: 6,
+  },
+  input: {
+    width: '100%',
+    height: 48,
+    backgroundColor: '#F4F2FF',
+    borderWidth: 1,
+    borderColor: '#E2DCFF',
+    borderRadius: 14,
+    paddingHorizontal: 16,
+    fontSize: 15,
+    color: '#18181B',
+  },
+  categoryScroll: {
+    flexDirection: 'row',
+    marginTop: 4,
+  },
+  categoryBadge: {
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: 12,
+    backgroundColor: '#F4F2FF',
+    marginRight: 8,
+  },
+  categorySelected: {
+    backgroundColor: '#7C65C1',
+  },
+  categoryBadgeText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#71717A',
+  },
+  categorySelectedText: {
+    color: '#FFFFFF',
+  },
+  uploadButton: {
+    height: 48,
+    backgroundColor: '#F4F2FF',
+    borderWidth: 1,
+    borderColor: '#7C65C1',
+    borderStyle: 'dashed',
+    borderRadius: 14,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  uploadButtonText: {
+    fontSize: 14,
+    color: '#7C65C1',
+    fontWeight: '600',
+  },
+  previewImage: {
+    width: '100%',
+    height: 120,
+    borderRadius: 12,
+    marginTop: 10,
+  },
+  submitButton: {
+    height: 52,
+    backgroundColor: '#7C65C1',
+    borderRadius: 18,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginTop: 12,
+  },
+  buttonDisabled: {
+    backgroundColor: '#BBAFE6',
+  },
+  submitButtonText: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: '600',
   },
 });
