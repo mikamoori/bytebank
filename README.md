@@ -1,56 +1,116 @@
-# Welcome to your Expo app 👋
+# Bytebank
 
-This is an [Expo](https://expo.dev) project created with [`create-expo-app`](https://www.npmjs.com/package/create-expo-app).
+Aplicativo de gerenciamento financeiro desenvolvido em React Native (Expo), com autenticação, transações financeiras, upload de recibos e integração com Firebase e Cloudinary.
 
-## Get started
+## Funcionalidades
 
-1. Install dependencies
+- Autenticação de usuários (login e cadastro) via Firebase Auth
+- Dashboard com visão geral das finanças
+- Listagem de transações com filtros por tipo (entrada/saída) e categoria
+- Adição de novas transações com upload de recibo/comprovante
 
-   ```bash
-   npm install
-   ```
+## Tecnologias utilizadas
 
-2. Start the app
+- React Native
+- Expo
+- Firebase (Authentication, Firestore)
+- Cloudinary (upload de imagens)
+- Expo Router
 
-   ```bash
-   npx expo start
-   ```
+## Pré-requisitos
 
-In the output, you'll find options to open the app in a
+- Node.js (versão 18 ou superior)
+- npm ou yarn
+- Expo CLI (`npm install -g expo-cli`, opcional — o projeto já usa `npx expo`)
+- Conta no Firebase
+- Conta no Cloudinary
 
-- [development build](https://docs.expo.dev/develop/development-builds/introduction/)
-- [Android emulator](https://docs.expo.dev/workflow/android-studio-emulator/)
-- [iOS simulator](https://docs.expo.dev/workflow/ios-simulator/)
-- [Expo Go](https://expo.dev/go), a limited sandbox for trying out app development with Expo
+## Configuração do Firebase
 
-You can start developing by editing the files inside the **app** directory. This project uses [file-based routing](https://docs.expo.dev/router/introduction).
+1. Acesse o [Firebase Console](https://console.firebase.google.com/) e crie um novo projeto (ou use um existente).
+2. Ative os seguintes serviços:
+   - **Authentication** (método de login por Email/Senha)
+   - **Cloud Firestore** (modo de produção ou teste, conforme necessidade)
+3. Copie as credenciais do seu projeto (disponíveis em Configurações do Projeto > Geral > Seus apps) e adicione no arquivo:
 
-## Get a fresh project
-
-When you're ready, run:
-
-```bash
-npm run reset-project
+```
+src/services/firebaseConfig.js
 ```
 
-This command will move the starter code to the **app-example** directory and create a blank **app** directory where you can start developing.
+Exemplo:
 
-### Other setup steps
+```javascript
+const firebaseConfig = {
+  apiKey: "SUA_API_KEY",
+  authDomain: "SEU_PROJETO.firebaseapp.com",
+  projectId: "SEU_PROJETO",
+  storageBucket: "SEU_PROJETO.appspot.com",
+  messagingSenderId: "SEU_SENDER_ID",
+  appId: "SEU_APP_ID",
+};
+```
 
-- To set up ESLint for linting, run `npx expo lint`, or follow our guide on ["Using ESLint and Prettier"](https://docs.expo.dev/guides/using-eslint/)
-- If you'd like to set up unit testing, follow our guide on ["Unit Testing with Jest"](https://docs.expo.dev/develop/unit-testing/)
-- Learn more about the TypeScript setup in this template in our guide on ["Using TypeScript"](https://docs.expo.dev/guides/typescript/)
+## Configuração do Cloudinary
 
-## Learn more
+1. Crie uma conta gratuita em [cloudinary.com](https://cloudinary.com/).
+2. No painel, anote o **Cloud Name** do seu projeto.
+3. Crie um **Upload Preset** sem assinatura (unsigned), em Settings > Upload > Upload presets.
+4. Atualize o arquivo:
 
-To learn more about developing your project with Expo, look at the following resources:
+```
+src/services/cloudinaryConfig.js
+```
 
-- [Expo documentation](https://docs.expo.dev/): Learn fundamentals, or go into advanced topics with our [guides](https://docs.expo.dev/guides).
-- [Learn Expo tutorial](https://docs.expo.dev/tutorial/introduction/): Follow a step-by-step tutorial where you'll create a project that runs on Android, iOS, and the web.
+Com o seu Cloud Name e o nome do Upload Preset:
 
-## Join the community
+```javascript
+const CLOUDINARY_CLOUD_NAME = 'SEU_CLOUD_NAME';
+const CLOUDINARY_UPLOAD_PRESET = 'SEU_UPLOAD_PRESET';
+```
 
-Join our community of developers creating universal apps.
+## Instalação e execução
 
-- [Expo on GitHub](https://github.com/expo/expo): View our open source platform and contribute.
-- [Discord community](https://chat.expo.dev): Chat with Expo users and ask questions.
+Clone o repositório e instale as dependências:
+
+1. Clone o repositório:
+```bash
+git clone https://github.com/mikamoori/bytebank.git
+```
+ 
+2. Entre na pasta do projeto:
+```bash
+cd bytebank
+```
+ 
+3. Instale as dependências:
+```bash
+npm install
+```
+ 
+4. Inicie o servidor de desenvolvimento:
+```bash
+npx expo start --clear
+```
+ 
+5. Aguarde o terminal exibir o QR code e a mensagem `Using Expo Go (Press s to switch to development build)`.
+
+Para abrir no navegador (web), pressione a tecla `w` (sem enter) diretamente no terminal onde o servidor está rodando. Isso abre automaticamente `http://localhost:8081`. Caso não abra sozinho, acesse esse endereço manualmente no navegador.
+
+## Estrutura do projeto
+
+```
+bytebank/
+├── src/
+│   ├── app/            # Rotas e telas (Expo Router)
+│   ├── components/     # Componentes reutilizáveis
+│   ├── context/         # Contextos globais (autenticação)
+│   ├── screens/         # Telas de login/cadastro
+│   └── services/        # Configurações do Firebase e Cloudinary
+├── assets/
+├── app.json
+└── package.json
+```
+
+## Autor
+
+Thamiris Adriano — Tech Challenge Fase 03 (Pós Tech - Front-end Engineering)

@@ -55,7 +55,7 @@ export default function RegisterScreen({ onSwitchToLogin }: RegisterScreenProps)
       <ScrollView contentContainerStyle={styles.scrollContent}>
         <View style={styles.card}>
           <View style={styles.topRow}>
-            <Text style={styles.brandText}>onebank</Text>
+            <Text style={styles.brandText}>ByteBank</Text>
             <View style={styles.arrowBadge}>
               <Text style={styles.arrowText}>↗</Text>
             </View>
