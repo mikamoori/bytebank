@@ -1,23 +1,27 @@
-import { 
-  collection, 
-  addDoc, 
-  getDocs, 
-  query, 
-  where, 
-  Timestamp 
+import {
+  collection,
+  addDoc,
+  getDocs,
+  query,
+  where,
+  Timestamp
 } from 'firebase/firestore';
-import { db } from './firebaseConfig';
+import { db } from '../services/firebaseConfig';
+import { Transaction } from '../domain/transaction';
 
 const COLLECTION_NAME = 'transactions';
 
-export const addTransaction = async (transaction: any) => {
+export const addTransaction = async (transaction: Omit<Transaction, 'id'>) => {
   return await addDoc(collection(db, COLLECTION_NAME), {
     ...transaction,
-    date: Timestamp.fromDate(transaction.date),
+    date: Timestamp.fromDate(transaction.date || new Date()),
   });
 };
 
-export const getTransactions = async (userId: any, category: any) => {
+export const getTransactions = async (
+  userId: string,
+  category?: string
+): Promise<Transaction[]> => {
   let q = query(
     collection(db, COLLECTION_NAME),
     where('userId', '==', userId)
@@ -28,7 +32,7 @@ export const getTransactions = async (userId: any, category: any) => {
   }
 
   const querySnapshot = await getDocs(q);
-  const transactions: any[] = [];
+  const transactions: Transaction[] = [];
 
   querySnapshot.forEach((doc) => {
     const data = doc.data();
@@ -36,19 +40,8 @@ export const getTransactions = async (userId: any, category: any) => {
       id: doc.id,
       ...data,
       date: data.date ? data.date.toDate() : new Date(),
-    });
+    } as Transaction);
   });
 
   return transactions;
 };
-
-import React from 'react';
-import { View, Text } from 'react-native';
-
-export default function TransactionsScreen() {
-  return (
-    <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
-      <Text>Tela de Transações</Text>
-    </View>
-  );
-}
