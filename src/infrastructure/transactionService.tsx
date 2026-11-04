@@ -6,8 +6,8 @@ import {
   where,
   Timestamp
 } from 'firebase/firestore';
-import { db } from '../services/firebaseConfig';
-import { Transaction } from '../domain/transaction';
+import { db } from '../../services/firebaseConfig';
+import { Transaction } from '../../domain/transaction';
 
 const COLLECTION_NAME = 'transactions';
 
