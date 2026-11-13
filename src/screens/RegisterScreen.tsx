@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import {
   StyleSheet,
@@ -16,7 +17,9 @@ interface RegisterScreenProps {
   onSwitchToLogin: () => void;
 }
 
-export default function RegisterScreen({ onSwitchToLogin }: RegisterScreenProps) {
+export default function RegisterScreen({
+  onSwitchToLogin,
+}: RegisterScreenProps) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -39,9 +42,47 @@ export default function RegisterScreen({ onSwitchToLogin }: RegisterScreenProps)
     try {
       setError('');
       setLoading(true);
-      await register(email, password);
-    } catch (err: any) {
-      setError('Falha ao criar conta. Verifique os dados informados.');
+
+      await register(email.trim(), password);
+
+    } catch (err: unknown) {
+      console.log('ERRO NO CADASTRO:', err);
+
+      if (
+        typeof err === 'object' &&
+        err !== null &&
+        'code' in err
+      ) {
+        const firebaseError = err as { code: string };
+
+        switch (firebaseError.code) {
+          case 'auth/email-already-in-use':
+            setError('Este e-mail já está cadastrado.');
+            break;
+
+          case 'auth/invalid-email':
+            setError('O endereço de e-mail é inválido.');
+            break;
+
+          case 'auth/weak-password':
+            setError('A senha deve ter pelo menos 6 caracteres.');
+            break;
+
+          case 'auth/operation-not-allowed':
+            setError('O cadastro por e-mail está desabilitado.');
+            break;
+
+          case 'auth/network-request-failed':
+            setError('Erro de conexão. Verifique sua internet.');
+            break;
+
+          default:
+            setError('Não foi possível criar sua conta. Tente novamente.');
+        }
+      } else {
+        setError('Ocorreu um erro inesperado. Tente novamente.');
+      }
+
     } finally {
       setLoading(false);
     }
@@ -55,7 +96,8 @@ export default function RegisterScreen({ onSwitchToLogin }: RegisterScreenProps)
       <ScrollView contentContainerStyle={styles.scrollContent}>
         <View style={styles.card}>
           <View style={styles.topRow}>
-            <Text style={styles.brandText}>onebank</Text>
+            <Text style={styles.brandText}>ByteBank</Text>
+
             <View style={styles.arrowBadge}>
               <Text style={styles.arrowText}>↗</Text>
             </View>
@@ -63,16 +105,20 @@ export default function RegisterScreen({ onSwitchToLogin }: RegisterScreenProps)
 
           <View style={styles.headerSection}>
             <Text style={styles.subtitleStep}>Account creation</Text>
+
             <Text style={styles.mainTitle}>
               Create an{'\n'}account to start{'\n'}managing your{'\n'}finances.
             </Text>
           </View>
 
-          {error ? <Text style={styles.errorText}>{error}</Text> : null}
+          {error ? (
+            <Text style={styles.errorText}>{error}</Text>
+          ) : null}
 
           <View style={styles.form}>
             <View style={styles.inputContainer}>
               <Text style={styles.label}>E-mail</Text>
+
               <TextInput
                 style={styles.input}
                 placeholder="your@email.com"
@@ -81,11 +127,13 @@ export default function RegisterScreen({ onSwitchToLogin }: RegisterScreenProps)
                 onChangeText={setEmail}
                 keyboardType="email-address"
                 autoCapitalize="none"
+                autoComplete="email"
               />
             </View>
 
             <View style={styles.inputContainer}>
               <Text style={styles.label}>Password</Text>
+
               <TextInput
                 style={styles.input}
                 placeholder="••••••••"
@@ -93,11 +141,13 @@ export default function RegisterScreen({ onSwitchToLogin }: RegisterScreenProps)
                 secureTextEntry
                 value={password}
                 onChangeText={setPassword}
+                autoComplete="new-password"
               />
             </View>
 
             <View style={styles.inputContainer}>
               <Text style={styles.label}>Confirm Password</Text>
+
               <TextInput
                 style={styles.input}
                 placeholder="••••••••"
@@ -105,11 +155,15 @@ export default function RegisterScreen({ onSwitchToLogin }: RegisterScreenProps)
                 secureTextEntry
                 value={confirmPassword}
                 onChangeText={setConfirmPassword}
+                autoComplete="new-password"
               />
             </View>
 
             <TouchableOpacity
-              style={[styles.button, loading && styles.buttonDisabled]}
+              style={[
+                styles.button,
+                loading && styles.buttonDisabled,
+              ]}
               onPress={handleRegister}
               disabled={loading}
               activeOpacity={0.85}
@@ -128,7 +182,8 @@ export default function RegisterScreen({ onSwitchToLogin }: RegisterScreenProps)
             activeOpacity={0.7}
           >
             <Text style={styles.switchText}>
-              Already have an account? <Text style={styles.switchTextBold}>Log in</Text>
+              Already have an account?{' '}
+              <Text style={styles.switchTextBold}>Log in</Text>
             </Text>
           </TouchableOpacity>
         </View>
